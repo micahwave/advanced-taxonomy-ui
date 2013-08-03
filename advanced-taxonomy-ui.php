@@ -150,7 +150,7 @@ class Taxonomy_UI {
 			wp_dropdown_categories( $select_args )
 		);
 
-		echo apply_filters( 'taxonomy_ui_' . $tax . '_select_html', $html );
+		echo apply_filters( 'taxonomy_ui_' . $tax . '_select_html', $html, $post );
 	}
 
 	/**
@@ -187,7 +187,7 @@ class Taxonomy_UI {
 
 		$html .= '</div>';
 
-		echo apply_filters( 'taxonomy_ui_' . $tax . '_radio_button_html', $html );
+		echo apply_filters( 'taxonomy_ui_' . $tax . '_radio_button_html', $html, $post );
 	}
 
 	/**
@@ -200,12 +200,14 @@ class Taxonomy_UI {
 	 */
 	public function render_checkboxes( $post, $name, $tax ) {
 
+		$args = array(
+			'taxonomy' => $tax
+		);
+
 		ob_start();
 
 		// pipe this thru ob_start and capture the result so we can filter it
-		wp_terms_checklist( $post->ID, array(
-			'taxonomy' => $tax,
-		));
+		wp_terms_checklist( $post->ID, apply_filters( 'taxonomy_ui_' . $tax . '_args', $args ) );
 
 		$list = ob_get_contents();
 
@@ -220,7 +222,7 @@ class Taxonomy_UI {
 			$list = '<ul>' . $list . '</ul>';
 		}
 
-		echo apply_filters( 'taxonomy_ui_' . $tax . '_checkbox_html', '<p>' . $list . '</p>' );
+		echo apply_filters( 'taxonomy_ui_' . $tax . '_checkbox_html', '<p>' . $list . '</p>', $post );
 		
 	}
 
