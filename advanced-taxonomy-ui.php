@@ -273,27 +273,15 @@ class Taxonomy_UI {
 			if( !wp_verify_nonce( $_POST[$nonce], $tax . '_metabox' ) )
 				continue;
 
-			if( isset( $_POST[$name] ) ) {
+			// must be set and greater than 0
+			if( isset( $_POST[$name] ) && $_POST[$name] > 0 ) {
 
-				// only set a single term if its a select or radio button
-				if( $type == 'select' || $type == 'radio' ) {
+				$terms = ( $type == 'select' || $type == 'radio' ) ? array( intval( $_POST[$name] ) ) : array_map( 'intval', $_POST[$name] );
 
-					// set the terms for a post for this taxonomy
-					wp_set_object_terms( $post_id, array( intval( $_POST[$name] ) ), $tax );
+				wp_set_object_terms( $post_id, $terms, $tax );
 
-				} else {
-
-					// save it differently, should already be an array
-					$terms = array_map( 'intval', $_POST[$name] );
-
-					wp_set_object_terms( $post_id, $terms, $tax );
-
-				}
-
-			}
-
-			// if nothing is checked delete the term relationships
-			if( $type == 'checkbox' && !isset( $_POST[$name] ) ) {
+			} else {
+				
 				wp_delete_object_term_relationships( $post_id, $tax );
 			}
 		}
