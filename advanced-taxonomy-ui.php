@@ -9,7 +9,9 @@
  * Version: 0.1
  */
 
-class Taxonomy_UI {
+if( !class_exists( 'Advanced_Taxonomy_UI' ) ) : 
+
+class Advanced_Taxonomy_UI {
 
 	/**
 	 * Possible ui types we'll accept
@@ -206,8 +208,10 @@ class Taxonomy_UI {
 
 		ob_start();
 
+		$args = apply_filters( 'taxonomy_ui_' . $tax . '_args', $args );
+
 		// pipe this thru ob_start and capture the result so we can filter it
-		wp_terms_checklist( $post->ID, apply_filters( 'taxonomy_ui_' . $tax . '_args', $args ) );
+		wp_terms_checklist( $post->ID, $args );
 
 		$list = ob_get_contents();
 
@@ -287,4 +291,6 @@ class Taxonomy_UI {
 		}
 	}
 }
-new Taxonomy_UI();
+endif;
+
+new Advanced_Taxonomy_UI();
