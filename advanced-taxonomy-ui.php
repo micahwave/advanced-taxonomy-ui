@@ -19,48 +19,31 @@ class Advanced_Taxonomy_UI {
 	var $ui_types = array( 'radio', 'checkbox', 'select' );
 
 	/**
-	 * Keep track of our UI inputs for saving
+	 * Keep track of the meta boxes to add
 	 */
-	var $inputs = array();
-
-	/**
-	 * The taxonomies we want to adjust
-	 */
-	var $taxonomies = array();
+	var $boxes = array();
 
 	/**
 	 * Setup our hooks
 	 */
 	public function __construct() {
-
-		add_action( 'init', array( $this, 'init' ), 999 );
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_boxes' ) );
 		add_action( 'save_post', array( $this, 'save_post' ), 20, 2 ); 
 	}
 
 	/**
-	 * Find the taxonomies that we want to have custom UIs for
 	 *
-	 * @return void
 	 */
-	public function init() {
+	public function add_custom_metabox( $tax, $type, $post_types ) {
 
-		global $wp_taxonomies;
+		$post_types = (array) $post_types;
 
-		foreach( $wp_taxonomies as $key => $tax ) {
-
-			if( isset( $tax->ui ) && in_array( $tax->ui, $this->ui_types ) ) {
-
-				$this->taxonomies[$key] = $tax;
-
-				foreach( $tax->object_type as $type ) {
-					$this->inputs[$type][] = array( 
-						'tax' => $key, 
-						'name' => $key . '-' . $tax->ui,
-						'type' => $tax->ui
-					);
-				}
-			}
+		foreach( $post_types as $post_type ) {
+			$this->boxes[$post_type][] = array(
+				'type' => $type,
+				'taxonomy' => $tax,
+				'name' => 'advanced_taxonomy_' . $tax . '_' . $type
+			);
 		}
 	}
 
@@ -71,28 +54,38 @@ class Advanced_Taxonomy_UI {
 	 */
 	public function add_meta_boxes() {
 
-		foreach( $this->taxonomies as $key => $tax ) {
+		$taxonomies = get_taxonomies( array(), 'objects' );
 
-			$id = $tax->hierarchical ? $key . 'div' : 'tagsdiv-' . $key;
+		foreach( $this->boxes as $post_type => $fields ) {
 
-			foreach( $tax->object_type as $type ) {
+			foreach( $fields as $field ) {
 
-				remove_meta_box( $id, $type, 'side' );
+				$key = $field['taxonomy'];
 
-				add_meta_box( 
-					$key . '-metabox', 
-					$tax->labels->name, 
-					array( $this, 'meta_box' ), 
-					$type, 
-					'side', 
-					null, 
-					array(
-						'tax' => $key,
-						'type' => $tax->ui, 
-						'input' => $key . '-' . $tax->ui
-					)
-				);
-			}
+				// tax exists
+				if( isset( $taxonomies[$key] ) ) {
+
+					$tax = $taxonomies[$key];
+
+					$id = $tax->hierarchical ? $key . 'div' : 'tagsdiv-' . $key;
+
+					remove_meta_box( $id, $post_type, 'side' );
+
+					add_meta_box( 
+						$key . '-metabox', 
+						$tax->labels->name, 
+						array( $this, 'meta_box' ), 
+						$post_type, 
+						'side', 
+						null, 
+						array(
+							'tax' => $key,
+							'type' => $field['type'], 
+							'name' => $field['name']
+						)
+					);
+				}
+			}	
 		}
 	}
 
@@ -108,18 +101,21 @@ class Advanced_Taxonomy_UI {
 		// hate this
 		$args = $args['args'];
 
+		$nonce = 'advanced_taxonomy_' . $args['tax'] . '_nonce';
+		$action = 'advanced_taxonomy_' . $args['tax'] . '_action';
+
 		// add a nonce
-		wp_nonce_field( $args['tax'] . '_metabox', $args['tax']. '_nonce' );
+		wp_nonce_field( $action, $nonce );
 
 		switch( $args['type'] ) {
 			case 'checkbox' :
-				$this->render_checkboxes( $post, $args['input'], $args['tax'] );
+				$this->render_checkboxes( $post, $args['name'], $args['tax'] );
 				break;
 			case 'radio' :
-				$this->render_radio_buttons( $post, $args['input'], $args['tax'] );
+				$this->render_radio_buttons( $post, $args['name'], $args['tax'] );
 				break;
 			default :
-				$this->render_select( $post, $args['input'], $args['tax'] );
+				$this->render_select( $post, $args['name'], $args['tax'] );
 				break;
 		}
 	}
@@ -166,7 +162,8 @@ class Advanced_Taxonomy_UI {
 	public function render_radio_buttons( $post, $name, $tax ) {
 
 		$terms = get_terms( $tax, array(
-			'hide_empty' => false
+			'hide_empty' => false,
+			'number' => 200
 		));
 
 		$html = '<div style="line-height:1.5;">';
@@ -259,22 +256,23 @@ class Advanced_Taxonomy_UI {
 		if( !current_user_can( 'edit_post', $post_id ) )
 			return;
 
-		if( empty( $this->inputs[$post->post_type] ) )
+		if( empty( $this->boxes[$post->post_type] ) )
 			return;
 
 		// loop through all the inputs for this post type
-		foreach( $this->inputs[$post->post_type] as $input ) {
+		foreach( $this->boxes[$post->post_type] as $input ) {
 
 			// convience vars
-			$tax = $input['tax'];
-			$nonce = $input['tax'] . '_nonce';
+			$tax = $input['taxonomy'];
+			$nonce = 'advanced_taxonomy_' . $tax . '_nonce';
+			$action = 'advanced_taxonomy_'  . $tax . '_action';
 			$name = $input['name'];
 			$type = $input['type'];
 
 			if( !isset( $_POST[$nonce] ) )
 				continue;
 
-			if( !wp_verify_nonce( $_POST[$nonce], $tax . '_metabox' ) )
+			if( !wp_verify_nonce( $_POST[$nonce], $action ) )
 				continue;
 
 			// must be set and greater than 0
@@ -291,6 +289,15 @@ class Advanced_Taxonomy_UI {
 		}
 	}
 }
-endif;
+global $ati;
+$ati = new Advanced_Taxonomy_UI();
 
-new Advanced_Taxonomy_UI();
+/**
+ * Helper to add custom metaboxes
+ */
+function advanced_taxonomy_metabox( $tax, $type, $post_types ) {
+	global $ati;
+	$ati->add_custom_metabox( $tax, $type, $post_types );
+}
+
+endif;
