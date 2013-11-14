@@ -9,9 +9,9 @@
  * Version: 0.1
  */
 
-if( !class_exists( 'Advanced_Taxonomy_UI' ) ) : 
+if( !class_exists( 'NS_Advanced_Taxonomy_UI' ) ) : 
 
-class Advanced_Taxonomy_UI {
+class NS_Advanced_Taxonomy_UI {
 
 	/**
 	 * Possible ui types we'll accept
@@ -289,15 +289,17 @@ class Advanced_Taxonomy_UI {
 		}
 	}
 }
-global $ati;
-$ati = new Advanced_Taxonomy_UI();
+$GLOBALS['ns_advanced_taxonomy_ui'] = new NS_Advanced_Taxonomy_UI();
+
+endif;
+
+if( !function_exists( 'advanced_taxonomy_metabox' ) ) :
 
 /**
  * Helper to add custom metaboxes
  */
 function advanced_taxonomy_metabox( $tax, $type, $post_types ) {
-	global $ati;
-	$ati->add_custom_metabox( $tax, $type, $post_types );
+	$GLOBALS['ns_advanced_taxonomy_ui']->add_custom_metabox( $tax, $type, $post_types );
 }
 
 endif;
